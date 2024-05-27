@@ -1,14 +1,21 @@
 import requests
 
+
 class Lamp:
-    def __init__(self, entity, base_url, headers):
-        self.entity = entity
-        self.entity_id = entity['entity_id']
+    def __init__(self, entity_id, domain, token):
+        self.entity_id = entity_id
+        self.BASE_URL = 'https://' + domain + '/api'
+        self.HEADERS = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+        }
 
-        self.features = entity['attributes']
+        self.entity = self.get_entity(entity_id)
 
-        self.BASE_URL = base_url
-        self.HEADERS = headers
+    def get_entity(self, entity_id):
+        url = f'{self.BASE_URL}/states/{entity_id}'
+        response = requests.get(url, headers=self.HEADERS)
+        return response.json()
 
     # Функції контролю стану лампочки
     def change_state(self, state: bool):

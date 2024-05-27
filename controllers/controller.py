@@ -11,7 +11,6 @@ class Controller:
             'Authorization': f'Bearer {self.TOKEN}',
             'Content-Type': 'application/json',
         }
-        self.connection_is_verified = self.verify_connection()
 
     def verify_connection(self):
         url = f'{self.BASE_URL}/states'
@@ -23,19 +22,14 @@ class Controller:
             try:
                 response.json()
             except ValueError:
-                print("Відповідь сервера не є JSON:", response.text)
-                return False
+                return f"Відповідь сервера не є дійсною."
 
-            print("Токен і базовий URL вірні.")
-            self.__save_auth_data()
-            return True
+            return "Підключення успішне!"
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP помилка: {http_err}")
+            return f"Введено неіснуючий токен..."
         except requests.exceptions.RequestException as req_err:
-            print(f"Помилка при перевірці токена та базового URL: {req_err}")
-
-        return False
+            return f"Введений домен не існує, або не відповідає."
 
     def get_light_entities(self):
         response = requests.get(f'{self.BASE_URL}/states', headers=self.HEADERS)
@@ -43,7 +37,7 @@ class Controller:
         return [entity for entity in entities if entity['entity_id'].startswith('light.')]
 
     # Операції з БД
-    def __save_auth_data(self):
+    def save_auth_data(self):
         Controller.delete_auth_data()
 
         with sqlite3.connect('db.sqlite3') as conn:

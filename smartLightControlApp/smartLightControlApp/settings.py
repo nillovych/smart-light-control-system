@@ -31,6 +31,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'lightEntitiesControlApp',
+    'profileApp',
     'authApp',
     'django.contrib.admin',
     'django.contrib.auth',

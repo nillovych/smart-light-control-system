@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ name }}</title>
+</head>
+<body>
+    <a href="{% url 'logout' %}">Logout</a>
+    {% for feature in features %}
+        {% if feature == 'brightness' %}
+            <form method="post" action="{% url 'light_control' entity_id %}">
+                {% csrf_token %}
+                <input type="range" id="brightness_slider" name="brightness" min="0" max="255" value="{{ brightness }}" onchange="this.form.submit()">
+            </form>
+        {% elif feature == 'rgb_color' %}
+            <form method="post" action="{% url 'light_control' entity_id %}">
+                {% csrf_token %}
+                <input type="color" id="rgb_color_picker" name="rgb_color" value="{{ hex_color }}" onchange="this.form.submit()">
+            </form>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

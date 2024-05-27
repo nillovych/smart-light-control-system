@@ -1,9 +1,20 @@
-{% if request.user.is_authenticated %}
-  <p>{{ request.user.username }}</p>
-  <a href="{% url 'logout' %}">Logout</a>
-{% else %}
-  <a href="{% url 'login' %}">Login</a>
-  <a href="{% url 'signup' %}">Signup</a>
-{% endif %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <a href="{% url 'profile' %}">{{ request.user.username }}</a>
+    <a href="{% url 'logout' %}">Logout</a>
+    {% if message %}
+        <p>{{ message }}</p>
+    {% else %}
+        <p>Ваші освітлювальні пристрої:</p>
+        {% for light in lights %}
+            <button onclick="location.href='{% url 'light_control' light.entity_id %}'">{{ light.attributes.friendly_name }}</button>
+        {% endfor %}
+    {% endif %}
 
-<h1>Welcome!</h1>
+
+</body>
+</html>
