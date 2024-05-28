@@ -10,3 +10,8 @@ class UserProfileForm(forms.ModelForm):
             'access_token': _("Токен доступу"),
             'company_domain': _("Домен компанії")
         }
+
+class ConsentForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['consent_for_data_collection']

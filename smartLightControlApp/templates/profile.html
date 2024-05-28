@@ -3,26 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Профіль</title>
-    <!-- Bootstrap CSS -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-        }
-        .navbar {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-        }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; }
+        .navbar { margin: 0; padding: 0; width: 100%; }
         .link-success { color: green; }
         .link-danger { color: red; }
+        .form-check { transition: all 0.5s ease; }
+        .btn-animate { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+        .btn-animate.show { max-height: 250px; }
+        .disabled-element { pointer-events: none; opacity: 0.5; }
+        #loadingAnimation { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }
     </style>
 </head>
 <body>
-    <!-- Consistent Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand text-white" href="{% url 'home' %}">Головна</a>
@@ -39,10 +34,9 @@
         </div>
     </nav>
 
-    <div class="container my-4">
+    <div class="container my-4" id="contentContainer">
         <h1 class="mt-3">Наявні підключення</h1>
 
-        <!-- Form with Bootstrap Styling -->
         <form id="form" method="post" action="{% url 'profile' %}" class="mb-3">
             {% csrf_token %}
             {% for field in form %}
@@ -56,7 +50,7 @@
                 {% endif %}
             </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary">Зберегти</button>
+            <button type="submit" class="btn btn-primary" name="update_profile">Зберегти</button>
             {% if message == 'Підключення успішне!' %}
                 <a href="#" class="link-success" onclick="document.getElementById('form').action = '{% url 'try_connect' %}'; document.getElementById('form').submit();">Перевірити підключення</a>
             {% elif message == None %}
@@ -66,13 +60,173 @@
             {% endif %}
         </form>
 
-        <!-- Optional Message Display -->
         {% if message %}
             <div class="alert alert-info">{{ message }}</div>
         {% endif %}
+
+        <div class="border p-3 mt-4">
+            <h2>Керування за допомогою штучного інтелекту</h2>
+            <form id="consentForm">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="consent_for_data_collection" id="consentCheckbox" {% if profile and profile.consent_for_data_collection %}checked{% endif %}>
+                    <label class="form-check-label" for="consentCheckbox">Я даю згоду на запис моїх дій програмою.</label>
+                </div>
+                <div class="btn-animate" id="createModelContainer">
+                    <button id="createModelButton" class="btn btn-{% if models_storage_exists %}secondary{% else %}success{% endif %} mt-2" {% if not can_create_model %}disabled{% endif %} onclick="startTrainingModel(event)">
+                        {% if models_storage_exists %}
+                            Перевчити модель
+                        {% else %}
+                            Створити модель
+                        {% endif %}
+                    </button>
+                    {% if not can_create_model %}
+                        <div class="form-text text-danger">Для створення моделі треба аби ви виконали як мінімум 1000 дій з лампами</div>
+                    {% endif %}
+                    {% if models_storage_exists %}
+                        <div class="mt-2">
+                            <button type="button" id="toggleAiControlButton" class="btn btn-primary" onclick="toggleAiControl()">
+                                {% if profile and profile.ai_control_enabled %}
+                                    Стоп
+                                {% else %}
+                                    Старт
+                                {% endif %}
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if model_message %}
+                    <div id="modelMessage" class="mt-2">
+                        <div class="alert {% if 'успішно' in model_message %}alert-success{% else %}alert-danger{% endif %}">{{ model_message }}</div>
+                    </div>
+                {% endif %}
+            </form>
+
+            <div id="loadingAnimation" class="text-center mt-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Навчання моделі...</span>
+                </div>
+                <div>Навчання моделі...</div>
+            </div>
+        </div>
     </div>
 
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function startTrainingModel(event) {
+            event.preventDefault();
+            document.getElementById('loadingAnimation').style.display = 'block';
+            document.body.classList.add('disabled-element');
+
+            fetch("{% url 'train_models' %}", { method: 'GET' })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingAnimation').style.display = 'none';
+                document.body.classList.remove('disabled-element');
+                const modelMessageContainer = document.getElementById('modelMessage');
+                const alertClass = data.status === 'success' ? 'alert-success' : 'alert-danger';
+                const messageHTML = `<div class="alert ${alertClass}">${data.message}</div>`;
+                if (modelMessageContainer) {
+                    modelMessageContainer.innerHTML = messageHTML;
+                } else {
+                    const newMessage = document.createElement('div');
+                    newMessage.id = 'modelMessage';
+                    newMessage.className = 'mt-2';
+                    newMessage.innerHTML = messageHTML;
+                    document.getElementById('createModelContainer').appendChild(newMessage);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingAnimation').style.display = 'none';
+                document.body.classList.remove('disabled-element');
+                const modelMessageContainer = document.getElementById('modelMessage');
+                const errorMessageHTML = '<div class="alert alert-danger">Сталась помилка при створенні моделі.</div>';
+                if (modelMessageContainer) {
+                    modelMessageContainer.innerHTML = errorMessageHTML;
+                } else {
+                    const newMessage = document.createElement('div');
+                    newMessage.id = 'modelMessage';
+                    newMessage.className = 'mt-2';
+                    newMessage.innerHTML = errorMessageHTML;
+                    document.getElementById('createModelContainer').appendChild(newMessage);
+                }
+            });
+        }
+
+        document.getElementById('consentCheckbox').addEventListener('change', function () {
+            const consent = this.checked;
+            const csrfToken = '{{ csrf_token }}';
+            const createModelContainer = document.getElementById('createModelContainer');
+
+            fetch("{% url 'update_consent' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: 'consent=' + consent
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Consent updated successfully.');
+                    if (consent) {
+                        createModelContainer.classList.add('show');
+                    } else {
+                        createModelContainer.classList.remove('show');
+                    }
+                } else {
+                    console.error('Failed to update consent:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+        function toggleAiControl() {
+            const csrfToken = '{{ csrf_token }}';
+            const toggleButton = document.getElementById('toggleAiControlButton');
+            const currentState = toggleButton.textContent === 'Стоп';
+            const newState = !currentState;
+
+            toggleButton.textContent = newState ? 'Стоп' : 'Старт';
+
+            fetch("{% url 'ai_control_enabled' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: 'ai_control_enabled=' + newState
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Failed to toggle AI control:', data.message);
+                    toggleButton.textContent = currentState ? 'Стоп' : 'Старт'; // Revert back in case of error
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                toggleButton.textContent = currentState ? 'Стоп' : 'Старт'; // Revert back in case of error
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const consentCheckbox = document.getElementById('consentCheckbox');
+            const createModelContainer = document.getElementById('createModelContainer');
+            if (consentCheckbox.checked) {
+                createModelContainer.classList.add('show');
+            } else {
+                createModelContainer.classList.remove('show');
+            }
+
+            const toggleButton = document.getElementById('toggleAiControlButton');
+            if (toggleButton) {
+                const currentState = '{{ profile.ai_control_enabled }}' === 'True';
+                toggleButton.textContent = currentState ? 'Стоп' : 'Старт';
+            }
+        });
+    </script>
 </body>
 </html>
