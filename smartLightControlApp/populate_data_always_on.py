@@ -1,43 +1,42 @@
 import random
 from datetime import datetime, timedelta
-from django.utils.timezone import make_aware
 from listenerApp.models import LightingEvent
 from django.contrib.auth.models import User
 
 # Parameters for data generation
-start_date = make_aware(datetime(2024, 1, 1, 0, 0))  # Start period
-end_date = make_aware(datetime(2024, 5, 27, 10, 0))  # End period
+start_date = datetime(2024, 3, 27, 10, 0)  # Start period
+end_date = datetime(2024, 5, 27, 10, 0)  # End period
 lamp_ids = ['light.virtual_light', 'light.virtual_light1']  # List of lamp IDs
-user = User.objects.first()  # Use the first user for all records
+user = User.objects.filter(username='roma').first()  # Use the user with username 'taya' for all records
 
 # Generation of random values for each lamp over the entire period
 current_time = start_date
-time_step = timedelta(hours=1)
+time_step = timedelta(minutes=10)  # Predict every 10 minutes
 
 data = []
 count = 0
+previous_state = {lamp_id: False for lamp_id in lamp_ids}
 
 while current_time < end_date:
     for lamp_id in lamp_ids:
         # Simulate realistic light usage patterns
         hour = current_time.hour
-        day_of_week = current_time.weekday()
 
         # Determine if the light should be on based on realistic daily routines
-        if day_of_week < 5:  # Weekdays
-            if 6 <= hour < 8 or 18 <= hour < 23:  # More likely to be on during morning and evening
-                state = random.choices([True, False], [0.8, 0.2])[0]
-            elif 8 <= hour < 18:  # Less likely to be on during work hours
-                state = random.choices([True, False], [0.2, 0.8])[0]
-            else:  # Early morning or late night
-                state = random.choices([True, False], [0.1, 0.9])[0]
-        else:  # Weekends
-            if 8 <= hour < 10 or 18 <= hour < 24:  # More likely to be on during breakfast and evening
-                state = random.choices([True, False], [0.7, 0.3])[0]
-            elif 10 <= hour < 18:  # On during the day, but less likely
-                state = random.choices([True, False], [0.4, 0.6])[0]
-            else:  # Early morning or late night
-                state = random.choices([True, False], [0.1, 0.9])[0]
+        if 8 <= hour < 20:  # More likely to be on between 8 AM and 8 PM
+            state = random.choices([True, False], [0.8, 0.2])[0]
+        else:  # Less likely to be on outside this range
+            state = random.choices([True, False], [0.2, 0.8])[0]
+
+        # Ensure state does not change too frequently by considering previous state
+        if previous_state[lamp_id] and not state:
+            if random.random() > 0.2:  # 80% chance to remain on if it was on before
+                state = True
+        elif not previous_state[lamp_id] and state:
+            if random.random() > 0.8:  # 80% chance to remain off if it was off before
+                state = False
+
+        previous_state[lamp_id] = state
 
         if state:
             # Higher brightness during evening, lower in the morning
@@ -72,10 +71,11 @@ while current_time < end_date:
         data.append(event)
         count += 1
         print(f"Event #{count} created for {lamp_id}")
+
+    # Advance the time by a fixed interval of 10 seconds
     current_time += time_step
 
-# Save data to the database
-LightingEvent.objects.bulk_create(data)
+print(f"Created {len(data)} lighting events.")
 
-print(f"Created {len(data)} lightning events.")
+LightingEvent.objects.bulk_create(data)
 print("Data population complete.")

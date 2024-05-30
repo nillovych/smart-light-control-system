@@ -1,6 +1,8 @@
 from django import forms
-from .models import UserProfile
 from django.utils.translation import gettext_lazy as _
+
+from .models import UserProfile
+
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
@@ -10,6 +12,7 @@ class UserProfileForm(forms.ModelForm):
             'access_token': _("Токен доступу"),
             'company_domain': _("Домен компанії")
         }
+
 
 class ConsentForm(forms.ModelForm):
     class Meta:

@@ -4,7 +4,7 @@ from django.db import models
 
 class LightingEvent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField()
     lamp_id = models.CharField(max_length=255)
     brightness = models.IntegerField(null=True, blank=True)
     color_r = models.IntegerField(null=True, blank=True)
@@ -24,3 +24,4 @@ class ModelsStorage(models.Model):
     color_r_model = models.BinaryField()
     color_g_model = models.BinaryField()
     color_b_model = models.BinaryField()
+    model_columns = models.JSONField(null=True)

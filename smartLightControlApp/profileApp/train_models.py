@@ -1,5 +1,4 @@
 import io
-
 import joblib
 import pandas as pd
 import xgboost as xgb
@@ -10,7 +9,6 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
     mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
-
 
 def train_and_save_models(user):
     # Load data from Django model
@@ -37,9 +35,16 @@ def train_and_save_models(user):
     df['prev_state_duration'] = (df['timestamp'] - df['timestamp'].shift(1)).fillna(
         pd.Timedelta(seconds=0)).dt.total_seconds()
 
+    # Consider history for better prediction
+    for lag in range(1, 7):
+        df[f'prev_state_{lag}'] = df['state'].shift(lag).fillna(0)
+        df[f'prev_brightness_{lag}'] = df['brightness'].shift(lag).fillna(df['brightness'].mean())
+
     # Split features and target
     X = df[['hour', 'minute', 'second', 'day_of_week', 'part_of_day', 'lamp_id', 'prev_state', 'prev_brightness',
-            'prev_color_r', 'prev_color_g', 'prev_color_b', 'prev_state_duration']]
+            'prev_color_r', 'prev_color_g', 'prev_color_b', 'prev_state_duration'] +
+           [f'prev_state_{lag}' for lag in range(1, 7)] +
+           [f'prev_brightness_{lag}' for lag in range(1, 7)]]
     y_state = df['state']
     y_brightness = df['brightness']
     y_color_r = df['color_r']
@@ -66,6 +71,9 @@ def train_and_save_models(user):
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
+
+    # Save the columns used during training
+    model_columns = X.columns.tolist()
 
     # Hyperparameter tuning for state model using XGBoost
     param_grid = {
@@ -129,6 +137,7 @@ def train_and_save_models(user):
     models_storage.color_r_model = color_r_model_bytes.getvalue()
     models_storage.color_g_model = color_g_model_bytes.getvalue()
     models_storage.color_b_model = color_b_model_bytes.getvalue()
+    models_storage.model_columns = model_columns  # Save model columns
     models_storage.save()
 
     # Evaluate the models

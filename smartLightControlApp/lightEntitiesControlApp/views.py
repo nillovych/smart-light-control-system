@@ -10,6 +10,8 @@ from django.shortcuts import render
 
 from listenerApp.models import LightingEvent
 
+import pandas as pd
+
 
 @login_required
 def light_control(request, entity_id):
@@ -35,13 +37,17 @@ def light_control(request, entity_id):
             updated_lamp = Lamp(entity_id=entity_id, domain=company_domain, token=access_token)
             rgb_color = updated_lamp.entity['attributes']['rgb_color']
             brightness = updated_lamp.entity['attributes']['brightness']
+            timestamp = pd.to_datetime('now').tz_localize(None)
 
             if brightness:
-                new_record = LightingEvent(user=request.user, lamp_id=entity_id, brightness=int(brightness),
-                                           state=True, color_r=rgb_color[0], color_g=rgb_color[1],
-                                           color_b=rgb_color[2])
+                if rgb_color:
+                    new_record = LightingEvent(user=request.user, lamp_id=entity_id, brightness=int(brightness),
+                                               state=True, color_r=rgb_color[0], color_g=rgb_color[1],
+                                               color_b=rgb_color[2], timestamp=timestamp)
+                else:
+                    new_record = LightingEvent(timestamp=timestamp, user=request.user, lamp_id=entity_id, brightness=int(brightness), state=True, color_r=255, color_g=194, color_b=7)
             else:
-                new_record = LightingEvent(user=request.user, lamp_id=entity_id, state=False)
+                new_record = LightingEvent(timestamp=timestamp, user=request.user, lamp_id=entity_id, state=False)
 
             new_record.save()
 

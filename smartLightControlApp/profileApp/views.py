@@ -94,6 +94,16 @@ def user_profile(request):
 
 @login_required
 def try_connect(request):
+
+    user = request.user
+    profile = UserProfile.objects.get(user=user)
+
+    models_storage_exists = ModelsStorage.objects.filter(user=user).exists()
+    lighting_event_count = LightingEvent.objects.filter(user=user).count()
+    can_create_model = lighting_event_count >= 1000
+    consent_form = ConsentForm(instance=profile)
+
+
     status = None
     access_token = ''
     company_domain = ''
@@ -110,7 +120,17 @@ def try_connect(request):
 
     form = UserProfileForm(initial={'access_token': access_token, 'company_domain': company_domain})
 
-    return render(request, 'profile.html', {'message': status, 'form': form})
+    # return render(request, 'profile', {'message': status, 'form': form})
+    return render(request, 'profile.html', {
+        'message': status,
+        'form': form,
+        'consent_form': consent_form,
+        'profile': profile,
+        'can_create_model': can_create_model,
+        'lighting_event_count': lighting_event_count,
+        'models_storage_exists': models_storage_exists,
+    })
+
 
 
 @require_POST

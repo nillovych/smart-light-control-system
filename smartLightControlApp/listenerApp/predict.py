@@ -1,31 +1,14 @@
 import io
-import os
-import sys
-
 import joblib
 import pandas as pd
-
-from .models import ModelsStorage, LightingEvent
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from controllers.controller import Controller
-from controllers.lamp import Lamp
-
 from django.contrib.auth.models import User
-
-# Columns expected by the model
-expected_columns = [
-    'hour', 'minute', 'second', 'day_of_week', 'prev_state',
-    'prev_brightness', 'prev_color_r', 'prev_color_g',
-    'prev_color_b', 'prev_state_duration',
-    'lamp_id_light.virtual_light1', 'part_of_day_1',
-    'part_of_day_2', 'part_of_day_3'
-]
+from .models import ModelsStorage, LightingEvent
 
 def predict(data, user):
     models_storage = ModelsStorage.objects.get(user=user)
 
     scaler = joblib.load(io.BytesIO(models_storage.scaler))
+    model_columns = models_storage.model_columns
 
     df = pd.DataFrame([data])
     df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize(None)
@@ -41,12 +24,12 @@ def predict(data, user):
     df = pd.get_dummies(df, columns=['lamp_id', 'part_of_day'], drop_first=True)
 
     # Ensure all expected columns are present
-    for col in expected_columns:
+    for col in model_columns:
         if col not in df.columns:
             df[col] = 0
 
     # Reorder columns to match training order
-    df = df[expected_columns]
+    df = df[model_columns]
 
     # Scale the features
     processed_data = scaler.transform(df)
@@ -71,8 +54,14 @@ def predict(data, user):
         'color_b': color_b_pred[0] if state_pred[0] else None
     }
 
+
 def ai_control(user):
+    from controllers.controller import Controller
+    from controllers.lamp import Lamp
+
     controller = Controller(token=user.userprofile.access_token, domain=user.userprofile.company_domain)
+    recent_predictions = {lamp_id: [] for lamp_id in ['light.virtual_light', 'light.virtual_light1']}
+
     while user.userprofile.ai_control_enabled:
         user = User.objects.get(id=user.id)
         if not user.userprofile.ai_control_enabled:
@@ -80,7 +69,6 @@ def ai_control(user):
 
         lights = controller.get_light_entities()
         for light in lights:
-
             last_light_event = LightingEvent.objects.filter(user=user, lamp_id=light['entity_id']).order_by(
                 '-timestamp').first()
             lamp_controller = Lamp(entity_id=light['entity_id'], token=user.userprofile.access_token,
@@ -99,9 +87,18 @@ def ai_control(user):
 
             prediction = predict(data, user)
 
-            current_state = prediction['state']
+            # Use recent history to stabilize the predictions
+            recent_states = recent_predictions[light['entity_id']]
+            recent_states.append(prediction['state'])
 
-            if current_state:
+            # Only consider the last 5 predictions to avoid frequent changes
+            if len(recent_states) > 5:
+                recent_states.pop(0)
+
+            # Decide the final state based on the majority of recent predictions
+            final_state = max(set(recent_states), key=recent_states.count)
+
+            if final_state:
                 current_brightness = prediction['brightness']
                 lamp_controller.change_brightness(current_brightness)
 
@@ -110,18 +107,19 @@ def ai_control(user):
                 current_color_b = prediction['color_b']
                 lamp_controller.change_color([current_color_r, current_color_g, current_color_b])
 
-                new_light_event = LightingEvent(user=user, state=current_state, lamp_id=data['lamp_id'],
+                new_light_event = LightingEvent(user=user, state=final_state, lamp_id=data['lamp_id'],
                                                 brightness=current_brightness, color_r=current_color_r,
-                                                color_g=current_color_g, color_b=current_color_b)
+                                                color_g=current_color_g, color_b=current_color_b,
+                                                timestamp=data['timestamp'])
+                print(
+                    f"\n{data['timestamp']}  {data['lamp_id']} - state:{final_state} - brightness:{current_brightness} - color:{current_color_r} - {current_color_g} - {current_color_b}")
+
             else:
                 lamp_controller.change_state(False)
 
-                new_light_event = LightingEvent(user=user, lamp_id=data['lamp_id'], state=current_state)
+                new_light_event = LightingEvent(user=user, lamp_id=data['lamp_id'], state=final_state,
+                                                timestamp=data['timestamp'])
+
+                print(f"\n{data['timestamp']}  {data['lamp_id']} - state:{final_state})")
 
             new_light_event.save()
-            print(f"{data['timestamp']}  {data['lamp_id']} - state:{current_state} - brightness:{current_brightness} - color:{current_color_r} - {current_color_g} - {current_color_b}")
-
-# Get the first user
-#first_user = User.objects.first()
-
-#ai_control(first_user)
