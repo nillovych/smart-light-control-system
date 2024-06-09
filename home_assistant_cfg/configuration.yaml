@@ -1,0 +1,74 @@
+default_config:
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+cloud:
+
+# Змінні вводу (inputs) для віртуальних ліхтариків
+input_boolean:
+  virtual_light_switch:
+    name: Virtual Light Switch
+
+input_number:
+  virtual_light_brightness:
+    name: Brightness
+    min: 0
+    max: 255
+    step: 1
+
+input_text:
+  virtual_light_color:
+    name: Color
+    pattern: '^\d{1,3},\d{1,3},\d{1,3}$'
+    initial: '255,255,255'  # Встановлює дійсне значення за замовчуванням
+
+# Опис сутностей ліхтариків
+light:
+  - platform: template
+    lights:
+      virtual_light:
+        friendly_name: "Віртуальне Світло"
+        turn_on:
+          service: input_boolean.turn_on
+          data:
+            entity_id: input_boolean.virtual_light_switch
+        turn_off:
+          service: input_boolean.turn_off
+          data:
+            entity_id: input_boolean.virtual_light_switch
+        set_level:
+          service: input_number.set_value
+          data:
+            entity_id: input_number.virtual_light_brightness
+            value: "{{ brightness }}"
+        set_color:
+          service: input_text.set_value
+          data:
+            entity_id: input_text.virtual_light_color
+            value: "{{ color }}"
+
+      virtual_light1:
+        friendly_name: "Віртуальне Світло 1"
+        turn_on:
+          service: input_boolean.turn_on
+          data:
+            entity_id: input_boolean.virtual_light_switch
+        turn_off:
+          service: input_boolean.turn_off
+          data:
+            entity_id: input_boolean.virtual_light_switch
+        set_level:
+          service: input_number.set_value
+          data:
+            entity_id: input_number.virtual_light_brightness
+            value: "{{ brightness }}"
+        set_color:
+          service: input_text.set_value
+          data:
+            entity_id: input_text.virtual_light_color
+            value: "{{ color }}"
+
