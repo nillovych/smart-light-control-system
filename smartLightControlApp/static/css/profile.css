@@ -1,0 +1,7 @@
+.link-success { color: green; }
+.link-danger { color: red; }
+.form-check { transition: all 0.5s ease; }
+.btn-animate { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+.btn-animate.show { max-height: 250px; }
+.disabled-element { pointer-events: none; opacity: 0.5; }
+#loadingAnimation { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; }

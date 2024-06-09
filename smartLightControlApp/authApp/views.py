@@ -11,9 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from controllers.controller import Controller
 
 
-# Create your views here.
-# Home page
-
 @login_required
 def index(request):
     user = request.user
@@ -38,7 +35,6 @@ def index(request):
         message = 'Ваш профіль не підключено. Перейдіть в профіль для підключення.'
 
     return render(request, 'index.html', {'message': message})
-
 
     # signup page
 

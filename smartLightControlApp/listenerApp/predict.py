@@ -1,8 +1,11 @@
 import io
+
 import joblib
 import pandas as pd
 from django.contrib.auth.models import User
+
 from .models import ModelsStorage, LightingEvent
+
 
 def predict(data, user):
     models_storage = ModelsStorage.objects.get(user=user)
@@ -20,18 +23,14 @@ def predict(data, user):
     df['part_of_day'] = df['hour'] // 6
     df['prev_state_duration'] = (df['timestamp'] - df['prev_timestamp']).dt.total_seconds()
 
-    # One-hot encode categorical variables
     df = pd.get_dummies(df, columns=['lamp_id', 'part_of_day'], drop_first=True)
 
-    # Ensure all expected columns are present
     for col in model_columns:
         if col not in df.columns:
             df[col] = 0
 
-    # Reorder columns to match training order
     df = df[model_columns]
 
-    # Scale the features
     processed_data = scaler.transform(df)
 
     state_model = joblib.load(io.BytesIO(models_storage.state_model))
@@ -87,15 +86,12 @@ def ai_control(user):
 
             prediction = predict(data, user)
 
-            # Use recent history to stabilize the predictions
             recent_states = recent_predictions[light['entity_id']]
             recent_states.append(prediction['state'])
 
-            # Only consider the last 5 predictions to avoid frequent changes
             if len(recent_states) > 5:
                 recent_states.pop(0)
 
-            # Decide the final state based on the majority of recent predictions
             final_state = max(set(recent_states), key=recent_states.count)
 
             if final_state:

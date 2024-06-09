@@ -45,7 +45,9 @@ def light_control(request, entity_id):
                                                state=True, color_r=rgb_color[0], color_g=rgb_color[1],
                                                color_b=rgb_color[2], timestamp=timestamp)
                 else:
-                    new_record = LightingEvent(timestamp=timestamp, user=request.user, lamp_id=entity_id, brightness=int(brightness), state=True, color_r=255, color_g=194, color_b=7)
+                    new_record = LightingEvent(timestamp=timestamp, user=request.user, lamp_id=entity_id,
+                                               brightness=int(brightness), state=True, color_r=255, color_g=194,
+                                               color_b=7)
             else:
                 new_record = LightingEvent(timestamp=timestamp, user=request.user, lamp_id=entity_id, state=False)
 

@@ -3,13 +3,12 @@ from datetime import datetime, timedelta
 from listenerApp.models import LightingEvent
 from django.contrib.auth.models import User
 
-# Parameters for data generation
-start_date = datetime(2024, 3, 27, 10, 0)  # Start period
-end_date = datetime(2024, 5, 27, 10, 0)  # End period
-lamp_ids = ['light.virtual_light', 'light.virtual_light1']  # List of lamp IDs
-user = User.objects.first()  # Use the first user for all records
+# Параметри для генерації даних
+start_date = datetime(2024, 3, 27, 10, 0)
+end_date = datetime(2024, 5, 27, 10, 0)
+lamp_ids = ['light.virtual_light', 'light.virtual_light1']
+user = User.objects.filter(username='username').first()
 
-# Generation of random values for each lamp over the entire period
 current_time = start_date
 time_step = timedelta(minutes=10)
 
@@ -18,28 +17,26 @@ count = 0
 
 while current_time < end_date:
     for lamp_id in lamp_ids:
-        # Simulate realistic light usage patterns
+        # Симуляція реалістичних шаблонів використання світла
         hour = current_time.hour
         day_of_week = current_time.weekday()
 
-        # Determine if the light should be on based on realistic daily routines
-        if day_of_week < 5:  # Weekdays
-            if 6 <= hour < 8 or 18 <= hour < 23:  # More likely to be on during morning and evening
+        if day_of_week < 5:  # Робочий день
+            if 6 <= hour < 8 or 18 <= hour < 23:
                 state = random.choices([True, False], [0.8, 0.2])[0]
-            elif 8 <= hour < 18:  # Less likely to be on during work hours
+            elif 8 <= hour < 18:
                 state = random.choices([True, False], [0.2, 0.8])[0]
-            else:  # Early morning or late night
+            else:
                 state = random.choices([True, False], [0.1, 0.9])[0]
-        else:  # Weekends
-            if 8 <= hour < 10 or 18 <= hour < 24:  # More likely to be on during breakfast and evening
+        else:  # Вихідний
+            if 8 <= hour < 10 or 18 <= hour < 24:
                 state = random.choices([True, False], [0.7, 0.3])[0]
-            elif 10 <= hour < 18:  # On during the day, but less likely
+            elif 10 <= hour < 18:
                 state = random.choices([True, False], [0.4, 0.6])[0]
-            else:  # Early morning or late night
+            else:
                 state = random.choices([True, False], [0.1, 0.9])[0]
 
         if state:
-            # Higher brightness during evening, lower in the morning
             if 18 <= hour < 23:
                 brightness = random.randint(200, 255)
             elif 6 <= hour < 8:

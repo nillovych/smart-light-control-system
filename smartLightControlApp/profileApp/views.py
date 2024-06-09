@@ -1,10 +1,9 @@
-import io
 import os
 import sys
 
 from django.contrib.auth.decorators import login_required
-from django.core.management import call_command
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -31,10 +30,6 @@ def train_models(request):
 
     return JsonResponse({'status': 'success' if success else 'error', 'message': message})
 
-from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from .models import UserProfile
 
 @login_required
 def ai_control_enabled(request):
@@ -44,12 +39,13 @@ def ai_control_enabled(request):
         user_profile.ai_control_enabled = ai_control_enabled
         user_profile.save()
         if ai_control_enabled:
-            # Start the ai_control function in the background
             from threading import Thread
             thread = Thread(target=ai_control, args=(request.user,))
             thread.start()
         return JsonResponse({'status': 'success', 'ai_control_enabled': ai_control_enabled})
     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+
 @login_required
 def user_profile(request):
     user = request.user
@@ -91,10 +87,8 @@ def user_profile(request):
     })
 
 
-
 @login_required
 def try_connect(request):
-
     user = request.user
     profile = UserProfile.objects.get(user=user)
 
@@ -102,7 +96,6 @@ def try_connect(request):
     lighting_event_count = LightingEvent.objects.filter(user=user).count()
     can_create_model = lighting_event_count >= 1000
     consent_form = ConsentForm(instance=profile)
-
 
     status = None
     access_token = ''
@@ -120,7 +113,6 @@ def try_connect(request):
 
     form = UserProfileForm(initial={'access_token': access_token, 'company_domain': company_domain})
 
-    # return render(request, 'profile', {'message': status, 'form': form})
     return render(request, 'profile.html', {
         'message': status,
         'form': form,
@@ -130,7 +122,6 @@ def try_connect(request):
         'lighting_event_count': lighting_event_count,
         'models_storage_exists': models_storage_exists,
     })
-
 
 
 @require_POST

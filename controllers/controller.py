@@ -1,5 +1,3 @@
-import sqlite3
-
 import requests
 
 
@@ -35,25 +33,3 @@ class Controller:
         response = requests.get(f'{self.BASE_URL}/states', headers=self.HEADERS)
         entities = response.json()
         return [entity for entity in entities if entity['entity_id'].startswith('light.')]
-
-    # Операції з БД
-    def save_auth_data(self):
-        Controller.delete_auth_data()
-
-        with sqlite3.connect('db.sqlite3') as conn:
-            conn.execute('INSERT INTO Users (token, url) VALUES (?, ?)',
-                         (self.TOKEN, self.BASE_URL))
-            conn.commit()
-
-    @staticmethod
-    def delete_auth_data():
-        with sqlite3.connect('db.sqlite3') as conn:
-            conn.execute('DELETE FROM Users')
-            conn.commit()
-
-    @staticmethod
-    def get_user_record():
-        with sqlite3.connect('db.sqlite3') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users")
-            return cursor.fetchone()

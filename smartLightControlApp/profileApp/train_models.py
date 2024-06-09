@@ -1,4 +1,5 @@
 import io
+
 import joblib
 import pandas as pd
 import xgboost as xgb
@@ -10,23 +11,20 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
 
+
 def train_and_save_models(user):
-    # Load data from Django model
     queryset = LightingEvent.objects.filter(user=user).values()
     df = pd.DataFrame(list(queryset))
 
-    # Handle missing values
     df.ffill(inplace=True)
 
-    # Convert timestamp to datetime and create additional time-based features
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['hour'] = df['timestamp'].dt.hour
     df['minute'] = df['timestamp'].dt.minute
     df['second'] = df['timestamp'].dt.second
     df['day_of_week'] = df['timestamp'].dt.dayofweek
-    df['part_of_day'] = df['hour'] // 6  # Divides the day into 4 parts
+    df['part_of_day'] = df['hour'] // 6
 
-    # Feature engineering: previous state and brightness
     df['prev_state'] = df['state'].shift(1).fillna(0)
     df['prev_brightness'] = df['brightness'].shift(1).fillna(df['brightness'].mean())
     df['prev_color_r'] = df['color_r'].shift(1).fillna(df['color_r'].mean())
@@ -35,12 +33,10 @@ def train_and_save_models(user):
     df['prev_state_duration'] = (df['timestamp'] - df['timestamp'].shift(1)).fillna(
         pd.Timedelta(seconds=0)).dt.total_seconds()
 
-    # Consider history for better prediction
     for lag in range(1, 7):
         df[f'prev_state_{lag}'] = df['state'].shift(lag).fillna(0)
         df[f'prev_brightness_{lag}'] = df['brightness'].shift(lag).fillna(df['brightness'].mean())
 
-    # Split features and target
     X = df[['hour', 'minute', 'second', 'day_of_week', 'part_of_day', 'lamp_id', 'prev_state', 'prev_brightness',
             'prev_color_r', 'prev_color_g', 'prev_color_b', 'prev_state_duration'] +
            [f'prev_state_{lag}' for lag in range(1, 7)] +
@@ -51,31 +47,25 @@ def train_and_save_models(user):
     y_color_g = df['color_g']
     y_color_b = df['color_b']
 
-    # One-hot encode categorical variables
     X = pd.get_dummies(X, columns=['lamp_id', 'part_of_day'], drop_first=True)
 
-    # Handle missing target values by filling or dropping
     y_brightness.fillna(y_brightness.mean(), inplace=True)
     y_color_r.fillna(y_color_r.mean(), inplace=True)
     y_color_g.fillna(y_color_g.mean(), inplace=True)
     y_color_b.fillna(y_color_b.mean(), inplace=True)
 
-    # Split into training and testing sets
     X_train, X_test, y_state_train, y_state_test = train_test_split(X, y_state, test_size=0.2, random_state=42)
     _, _, y_brightness_train, y_brightness_test = train_test_split(X, y_brightness, test_size=0.2, random_state=42)
     _, _, y_color_r_train, y_color_r_test = train_test_split(X, y_color_r, test_size=0.2, random_state=42)
     _, _, y_color_g_train, y_color_g_test = train_test_split(X, y_color_g, test_size=0.2, random_state=42)
     _, _, y_color_b_train, y_color_b_test = train_test_split(X, y_color_b, test_size=0.2, random_state=42)
 
-    # Scale the features
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
 
-    # Save the columns used during training
     model_columns = X.columns.tolist()
 
-    # Hyperparameter tuning for state model using XGBoost
     param_grid = {
         'n_estimators': [100, 200, 300],
         'max_depth': [3, 5, 7],
@@ -90,7 +80,6 @@ def train_and_save_models(user):
     grid_search.fit(X_train, y_state_train)
     best_state_model = grid_search.best_estimator_
 
-    # Train other models without hyperparameter tuning for simplicity
     brightness_model = RandomForestRegressor(random_state=42)
     color_r_model = RandomForestRegressor(random_state=42)
     color_g_model = RandomForestRegressor(random_state=42)
@@ -101,7 +90,6 @@ def train_and_save_models(user):
     color_g_model.fit(X_train, y_color_g_train)
     color_b_model.fit(X_train, y_color_b_train)
 
-    # Save models to the database
     scaler_bytes = io.BytesIO()
     joblib.dump(scaler, scaler_bytes)
     scaler_bytes.seek(0)
@@ -137,10 +125,9 @@ def train_and_save_models(user):
     models_storage.color_r_model = color_r_model_bytes.getvalue()
     models_storage.color_g_model = color_g_model_bytes.getvalue()
     models_storage.color_b_model = color_b_model_bytes.getvalue()
-    models_storage.model_columns = model_columns  # Save model columns
+    models_storage.model_columns = model_columns
     models_storage.save()
 
-    # Evaluate the models
     y_state_pred = best_state_model.predict(X_test)
     accuracy = accuracy_score(y_state_test, y_state_pred)
     precision = precision_score(y_state_test, y_state_pred)

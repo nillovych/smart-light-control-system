@@ -3,15 +3,14 @@ from datetime import datetime, timedelta
 from listenerApp.models import LightingEvent
 from django.contrib.auth.models import User
 
-# Parameters for data generation
-start_date = datetime(2024, 3, 27, 10, 0)  # Start period
-end_date = datetime(2024, 5, 27, 10, 0)  # End period
-lamp_ids = ['light.virtual_light', 'light.virtual_light1']  # List of lamp IDs
-user = User.objects.filter(username='roma').first()  # Use the user with username 'taya' for all records
+# Параметри для генерації даних
+start_date = datetime(2024, 3, 27, 10, 0)
+end_date = datetime(2024, 5, 27, 10, 0)
+lamp_ids = ['light.virtual_light', 'light.virtual_light1']
+user = User.objects.filter(username='username').first()
 
-# Generation of random values for each lamp over the entire period
 current_time = start_date
-time_step = timedelta(minutes=10)  # Predict every 10 minutes
+time_step = timedelta(minutes=10)
 
 data = []
 count = 0
@@ -19,27 +18,24 @@ previous_state = {lamp_id: False for lamp_id in lamp_ids}
 
 while current_time < end_date:
     for lamp_id in lamp_ids:
-        # Simulate realistic light usage patterns
+        # Симуляція реалістичних шаблонів використання світла
         hour = current_time.hour
 
-        # Determine if the light should be on based on realistic daily routines
-        if 8 <= hour < 20:  # More likely to be on between 8 AM and 8 PM
+        if 8 <= hour < 20:
             state = random.choices([True, False], [0.8, 0.2])[0]
-        else:  # Less likely to be on outside this range
+        else:
             state = random.choices([True, False], [0.2, 0.8])[0]
 
-        # Ensure state does not change too frequently by considering previous state
         if previous_state[lamp_id] and not state:
-            if random.random() > 0.2:  # 80% chance to remain on if it was on before
+            if random.random() > 0.2:
                 state = True
         elif not previous_state[lamp_id] and state:
-            if random.random() > 0.8:  # 80% chance to remain off if it was off before
+            if random.random() > 0.8:
                 state = False
 
         previous_state[lamp_id] = state
 
         if state:
-            # Higher brightness during evening, lower in the morning
             if 18 <= hour < 23:
                 brightness = random.randint(200, 255)
             elif 6 <= hour < 8:
@@ -72,7 +68,6 @@ while current_time < end_date:
         count += 1
         print(f"Event #{count} created for {lamp_id}")
 
-    # Advance the time by a fixed interval of 10 seconds
     current_time += time_step
 
 print(f"Created {len(data)} lighting events.")
