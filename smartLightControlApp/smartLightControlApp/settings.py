@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9^c+!$uy&=p%g46&hc6gydpy%f%cm_1ye!91d464*1_a0av9hp'
+SECRET_KEY = 'place_for_secret_key'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -81,10 +81,8 @@ DATABASES = {
    'default': {
        'ENGINE': 'django.db.backends.postgresql',
        'NAME': 'smartlight_db',
-       'USER': 'postgres',
-       'PASSWORD': 'password',
-       'HOST': 'localhost',
-       'PORT': '5432',
+       # db_info...
+
    }
 }
 
